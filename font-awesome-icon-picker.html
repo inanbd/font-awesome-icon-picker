@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Icon Picker</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f5f4f0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .demo-area {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .trigger-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #1a1a2e;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+    transition: transform 0.18s, background 0.18s;
+    position: relative;
+    z-index: 10;
+  }
+  .trigger-btn:hover { background: #16213e; transform: scale(1.07); }
+  .trigger-btn.active { background: #e74c3c; }
+  .trigger-btn.active i { transform: rotate(45deg); }
+  .trigger-btn i { transition: transform 0.22s; }
+
+  .picker-panel {
+    width: 100%;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.13);
+    overflow: hidden;
+    transform-origin: bottom right;
+    transform: scale(0.92) translateY(10px);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.22s cubic-bezier(.4,0,.2,1), opacity 0.18s;
+    border: 1px solid #ebebeb;
+  }
+  .picker-panel.open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .picker-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    background: #f2f1ee;
+    border-radius: 10px;
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .search-bar i { color: #999; font-size: 14px; }
+  .search-bar input {
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 100%;
+    padding: 9px 0;
+    font-size: 14px;
+    color: #222;
+  }
+  .search-bar input::placeholder { color: #bbb; }
+
+  .category-tabs {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .category-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 5px 13px;
+    border-radius: 20px;
+    border: 1.5px solid #e5e5e5;
+    background: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    color: #777;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .tab-btn:hover { border-color: #1a1a2e; color: #1a1a2e; }
+  .tab-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+  .icon-grid-wrap {
+    padding: 12px 12px 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #ddd #fafafa;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #bbb;
+    margin: 10px 4px 6px;
+  }
+
+  .icon-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .icon-btn {
+    aspect-ratio: 1;
+    border: none;
+    background: transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #333;
+    transition: background 0.12s, transform 0.1s, color 0.12s;
+    position: relative;
+  }
+  .icon-btn:hover {
+    background: #f0efeb;
+    transform: scale(1.18);
+    color: #1a1a2e;
+  }
+  .icon-btn:active { transform: scale(0.95); }
+  .icon-btn.selected { background: #1a1a2e; color: #fff; }
+
+  .no-results {
+    text-align: center;
+    padding: 30px 20px;
+    color: #bbb;
+    font-size: 14px;
+  }
+  .no-results i { font-size: 28px; display: block; margin-bottom: 8px; opacity: 0.4; }
+
+  .picker-footer {
+    padding: 10px 16px 14px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafafa;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 48px;
+  }
+  .selected-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .preview-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #f2f1ee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: #333;
+    border: 1px solid #e5e5e5;
+    transition: all 0.2s;
+  }
+  .preview-label {
+    font-size: 13px;
+    color: #999;
+  }
+  .preview-label span {
+    display: block;
+    font-size: 12px;
+    color: #bbb;
+    font-family: monospace;
+  }
+
+  .copy-btn {
+    padding: 7px 16px;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .copy-btn:hover { background: #16213e; }
+  .copy-btn:disabled { opacity: 0.4; cursor: default; }
+  .copy-btn.copied { background: #27ae60; }
+
+  .toast {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1a1a2e;
+    color: #fff;
+    padding: 9px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    white-space: nowrap;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .textbox-wrap {
+    width: 100%;
+    position: relative;
+  }
+  .textbox-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    display: block;
+  }
+  #outputTextarea {
+    width: 100%;
+    min-height: 90px;
+    border: 1.5px solid #e5e5e5;
+    border-radius: 12px;
+    padding: 12px 44px 12px 14px;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    color: #222;
+    background: #fff;
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  #outputTextarea:focus {
+    border-color: #1a1a2e;
+    box-shadow: 0 0 0 3px rgba(26,26,46,0.08);
+  }
+  #outputTextarea.flash {
+    border-color: #27ae60;
+    box-shadow: 0 0 0 3px rgba(39,174,96,0.15);
+  }
+  .clear-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: none;
+    background: #f2f1ee;
+    color: #aaa;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.12s, color 0.12s;
+  }
+  .clear-btn:hover { background: #fde8e8; color: #e74c3c; }
+
+  .bottom-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-area">
+  <div class="textbox-wrap">
+    <span class="textbox-label">Your HTML</span>
+    <textarea id="outputTextarea" placeholder="Select an icon below — the tag will appear here…" spellcheck="false"></textarea>
+    <button class="clear-btn" id="clearBtn" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+
+  <div class="picker-panel" id="pickerPanel">
+    <div class="picker-header">
+      <div class="search-bar">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="searchInput" placeholder="Search icons…" autocomplete="off">
+      </div>
+      <div class="category-tabs" id="categoryTabs"></div>
+    </div>
+
+    <div class="icon-grid-wrap" id="iconGridWrap">
+      <div class="icon-grid" id="iconGrid"></div>
+    </div>
+
+    <div class="picker-footer">
+      <div class="selected-preview">
+        <div class="preview-icon" id="previewIcon"><i class="fa-solid fa-icons"></i></div>
+        <div class="preview-label" id="previewLabel">
+          No icon selected
+          <span id="previewClass"></span>
+        </div>
+      </div>
+      <button class="copy-btn" id="copyBtn" disabled>
+        <i class="fa-regular fa-copy"></i> Copy
+      </button>
+    </div>
+  </div>
+
+  <div class="bottom-row">
+    <button class="trigger-btn" id="triggerBtn" title="Pick an icon">
+      <i class="fa-solid fa-face-smile"></i>
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast">Copied to clipboard!</div>
+
+<script>
+const icons = {
+  "Smileys": [
+    {cls:"fa-regular fa-face-smile", name:"smile"},
+    {cls:"fa-regular fa-face-laugh", name:"laugh"},
+    {cls:"fa-regular fa-face-grin-stars", name:"grin-stars"},
+    {cls:"fa-regular fa-face-sad-tear", name:"sad-tear"},
+    {cls:"fa-regular fa-face-angry", name:"angry"},
+    {cls:"fa-regular fa-face-surprise", name:"surprise"},
+    {cls:"fa-regular fa-face-meh", name:"meh"},
+    {cls:"fa-regular fa-face-kiss-wink-heart", name:"kiss-wink"},
+    {cls:"fa-regular fa-face-rolling-eyes", name:"rolling-eyes"},
+    {cls:"fa-regular fa-face-flushed", name:"flushed"},
+    {cls:"fa-regular fa-face-grimace", name:"grimace"},
+    {cls:"fa-regular fa-face-dizzy", name:"dizzy"},
+    {cls:"fa-solid fa-skull", name:"skull"},
+    {cls:"fa-solid fa-ghost", name:"ghost"},
+    {cls:"fa-solid fa-robot", name:"robot"},
+    {cls:"fa-solid fa-user-astronaut", name:"astronaut"},
+    {cls:"fa-solid fa-masks-theater", name:"theater"},
+    {cls:"fa-solid fa-fire", name:"fire"},
+    {cls:"fa-solid fa-snowflake", name:"snowflake"},
+    {cls:"fa-solid fa-sun", name:"sun"},
+    {cls:"fa-solid fa-moon", name:"moon"},
+  ],
+  "People": [
+    {cls:"fa-solid fa-user", name:"user"},
+    {cls:"fa-solid fa-users", name:"users"},
+    {cls:"fa-solid fa-person", name:"person"},
+    {cls:"fa-solid fa-person-running", name:"running"},
+    {cls:"fa-solid fa-person-swimming", name:"swimming"},
+    {cls:"fa-solid fa-baby", name:"baby"},
+    {cls:"fa-solid fa-child", name:"child"},
+    {cls:"fa-solid fa-user-tie", name:"user-tie"},
+    {cls:"fa-solid fa-user-nurse", name:"nurse"},
+    {cls:"fa-solid fa-user-graduate", name:"graduate"},
+    {cls:"fa-solid fa-user-secret", name:"secret"},
+    {cls:"fa-solid fa-person-biking", name:"biking"},
+    {cls:"fa-solid fa-handshake", name:"handshake"},
+    {cls:"fa-solid fa-hand-peace", name:"peace"},
+    {cls:"fa-solid fa-thumbs-up", name:"thumbs-up"},
+    {cls:"fa-solid fa-thumbs-down", name:"thumbs-down"},
+    {cls:"fa-solid fa-hand-point-right", name:"point-right"},
+    {cls:"fa-solid fa-hands-clapping", name:"clapping"},
+  ],
+  "Nature": [
+    {cls:"fa-solid fa-paw", name:"paw"},
+    {cls:"fa-solid fa-dog", name:"dog"},
+    {cls:"fa-solid fa-cat", name:"cat"},
+    {cls:"fa-solid fa-fish", name:"fish"},
+    {cls:"fa-solid fa-bird", name:"bird"},
+    {cls:"fa-solid fa-dove", name:"dove"},
+    {cls:"fa-solid fa-dragon", name:"dragon"},
+    {cls:"fa-solid fa-spider", name:"spider"},
+    {cls:"fa-solid fa-frog", name:"frog"},
+    {cls:"fa-solid fa-otter", name:"otter"},
+    {cls:"fa-solid fa-horse", name:"horse"},
+    {cls:"fa-solid fa-leaf", name:"leaf"},
+    {cls:"fa-solid fa-seedling", name:"seedling"},
+    {cls:"fa-solid fa-tree", name:"tree"},
+    {cls:"fa-solid fa-mountain", name:"mountain"},
+    {cls:"fa-solid fa-cloud", name:"cloud"},
+    {cls:"fa-solid fa-cloud-rain", name:"rain"},
+    {cls:"fa-solid fa-rainbow", name:"rainbow"},
+    {cls:"fa-solid fa-bolt", name:"bolt"},
+  ],
+  "Food": [
+    {cls:"fa-solid fa-pizza-slice", name:"pizza"},
+    {cls:"fa-solid fa-burger", name:"burger"},
+    {cls:"fa-solid fa-hotdog", name:"hotdog"},
+    {cls:"fa-solid fa-ice-cream", name:"ice-cream"},
+    {cls:"fa-solid fa-cake-candles", name:"cake"},
+    {cls:"fa-solid fa-cookie-bite", name:"cookie"},
+    {cls:"fa-solid fa-apple-whole", name:"apple"},
+    {cls:"fa-solid fa-lemon", name:"lemon"},
+    {cls:"fa-solid fa-carrot", name:"carrot"},
+    {cls:"fa-solid fa-egg", name:"egg"},
+    {cls:"fa-solid fa-mug-hot", name:"coffee"},
+    {cls:"fa-solid fa-beer-mug-empty", name:"beer"},
+    {cls:"fa-solid fa-wine-glass", name:"wine"},
+    {cls:"fa-solid fa-martini-glass", name:"martini"},
+    {cls:"fa-solid fa-bowl-food", name:"bowl"},
+    {cls:"fa-solid fa-utensils", name:"utensils"},
+    {cls:"fa-solid fa-blender", name:"blender"},
+  ],
+  "Travel": [
+    {cls:"fa-solid fa-plane", name:"plane"},
+    {cls:"fa-solid fa-car", name:"car"},
+    {cls:"fa-solid fa-bus", name:"bus"},
+    {cls:"fa-solid fa-train", name:"train"},
+    {cls:"fa-solid fa-ship", name:"ship"},
+    {cls:"fa-solid fa-bicycle", name:"bicycle"},
+    {cls:"fa-solid fa-motorcycle", name:"motorcycle"},
+    {cls:"fa-solid fa-rocket", name:"rocket"},
+    {cls:"fa-solid fa-helicopter", name:"helicopter"},
+    {cls:"fa-solid fa-sailboat", name:"sailboat"},
+    {cls:"fa-solid fa-globe", name:"globe"},
+    {cls:"fa-solid fa-map-location-dot", name:"map"},
+    {cls:"fa-solid fa-location-dot", name:"location"},
+    {cls:"fa-solid fa-compass", name:"compass"},
+    {cls:"fa-solid fa-suitcase", name:"suitcase"},
+    {cls:"fa-solid fa-passport", name:"passport"},
+    {cls:"fa-solid fa-anchor", name:"anchor"},
+    {cls:"fa-solid fa-tent", name:"tent"},
+  ],
+  "Tech": [
+    {cls:"fa-solid fa-laptop", name:"laptop"},
+    {cls:"fa-solid fa-mobile-screen", name:"mobile"},
+    {cls:"fa-solid fa-tablet-screen-button", name:"tablet"},
+    {cls:"fa-solid fa-desktop", name:"desktop"},
+    {cls:"fa-solid fa-keyboard", name:"keyboard"},
+    {cls:"fa-solid fa-computer-mouse", name:"mouse"},
+    {cls:"fa-solid fa-headphones", name:"headphones"},
+    {cls:"fa-solid fa-camera", name:"camera"},
+    {cls:"fa-solid fa-tv", name:"tv"},
+    {cls:"fa-solid fa-gamepad", name:"gamepad"},
+    {cls:"fa-solid fa-print", name:"print"},
+    {cls:"fa-solid fa-wifi", name:"wifi"},
+    {cls:"fa-solid fa-battery-full", name:"battery"},
+    {cls:"fa-solid fa-plug", name:"plug"},
+    {cls:"fa-solid fa-microchip", name:"microchip"},
+    {cls:"fa-solid fa-database", name:"database"},
+    {cls:"fa-solid fa-server", name:"server"},
+    {cls:"fa-brands fa-github", name:"github"},
+  ],
+  "Symbols": [
+    {cls:"fa-solid fa-heart", name:"heart"},
+    {cls:"fa-solid fa-star", name:"star"},
+    {cls:"fa-solid fa-bell", name:"bell"},
+    {cls:"fa-solid fa-flag", name:"flag"},
+    {cls:"fa-solid fa-crown", name:"crown"},
+    {cls:"fa-solid fa-gem", name:"gem"},
+    {cls:"fa-solid fa-trophy", name:"trophy"},
+    {cls:"fa-solid fa-medal", name:"medal"},
+    {cls:"fa-solid fa-certificate", name:"certificate"},
+    {cls:"fa-solid fa-shield-halved", name:"shield"},
+    {cls:"fa-solid fa-lock", name:"lock"},
+    {cls:"fa-solid fa-key", name:"key"},
+    {cls:"fa-solid fa-tag", name:"tag"},
+    {cls:"fa-solid fa-bookmark", name:"bookmark"},
+    {cls:"fa-solid fa-circle-check", name:"check"},
+    {cls:"fa-solid fa-circle-xmark", name:"x-mark"},
+    {cls:"fa-solid fa-exclamation", name:"exclamation"},
+    {cls:"fa-solid fa-question", name:"question"},
+    {cls:"fa-solid fa-infinity", name:"infinity"},
+  ],
+};
+
+let selectedIcon = null;
+let activeCategory = "All";
+let searchQuery = "";
+
+const panel = document.getElementById("pickerPanel");
+const triggerBtn = document.getElementById("triggerBtn");
+const searchInput = document.getElementById("searchInput");
+const iconGrid = document.getElementById("iconGrid");
+const categoryTabs = document.getElementById("categoryTabs");
+const previewIcon = document.getElementById("previewIcon");
+const previewLabel = document.getElementById("previewLabel");
+const previewClass = document.getElementById("previewClass");
+const copyBtn = document.getElementById("copyBtn");
+const toast = document.getElementById("toast");
+const outputTextarea = document.getElementById("outputTextarea");
+const clearBtn = document.getElementById("clearBtn");
+
+function buildTabs() {
+  const cats = ["All", ...Object.keys(icons)];
+  cats.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (cat === "All" ? " active" : "");
+    btn.textContent = cat;
+    btn.addEventListener("click", () => {
+      activeCategory = cat;
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderGrid();
+    });
+    categoryTabs.appendChild(btn);
+  });
+}
+
+function getFilteredIcons() {
+  let result = [];
+  const cats = activeCategory === "All" ? Object.keys(icons) : [activeCategory];
+  cats.forEach(cat => {
+    const filtered = icons[cat].filter(ic =>
+      !searchQuery || ic.name.includes(searchQuery) || ic.cls.includes(searchQuery)
+    );
+    if (filtered.length) result.push({ cat, icons: filtered });
+  });
+  return result;
+}
+
+function renderGrid() {
+  iconGrid.innerHTML = "";
+  const groups = getFilteredIcons();
+  if (!groups.length || !groups.some(g => g.icons.length)) {
+    iconGrid.innerHTML = `<div class="no-results" style="grid-column:1/-1"><i class="fa-solid fa-circle-question"></i>No icons found</div>`;
+    return;
+  }
+  groups.forEach(group => {
+    if (activeCategory === "All") {
+      const label = document.createElement("div");
+      label.className = "section-label";
+      label.style.gridColumn = "1 / -1";
+      label.textContent = group.cat;
+      iconGrid.appendChild(label);
+    }
+    group.icons.forEach(ic => {
+      const btn = document.createElement("button");
+      btn.className = "icon-btn" + (selectedIcon && selectedIcon.cls === ic.cls ? " selected" : "");
+      btn.title = ic.name;
+      btn.innerHTML = `<i class="${ic.cls}" aria-hidden="true"></i>`;
+      btn.addEventListener("click", () => selectIcon(ic));
+      iconGrid.appendChild(btn);
+    });
+  });
+}
+
+function insertAtCursor(tag) {
+  const start = outputTextarea.selectionStart;
+  const end = outputTextarea.selectionEnd;
+  const before = outputTextarea.value.substring(0, start);
+  const after = outputTextarea.value.substring(end);
+  outputTextarea.value = before + tag + after;
+  const newPos = start + tag.length;
+  outputTextarea.selectionStart = outputTextarea.selectionEnd = newPos;
+  outputTextarea.focus();
+  outputTextarea.classList.add("flash");
+  setTimeout(() => outputTextarea.classList.remove("flash"), 500);
+}
+
+function selectIcon(ic) {
+  selectedIcon = ic;
+  document.querySelectorAll(".icon-btn").forEach(b => b.classList.remove("selected"));
+  event.currentTarget.classList.add("selected");
+  previewIcon.innerHTML = `<i class="${ic.cls}"></i>`;
+  const nameFormatted = ic.name.replace(/-/g, ' ');
+  previewLabel.childNodes[0].textContent = nameFormatted.charAt(0).toUpperCase() + nameFormatted.slice(1);
+  previewClass.textContent = `<i class="${ic.cls}">`;
+  copyBtn.disabled = false;
+  const tag = `<i class="${ic.cls}"></i>`;
+  insertAtCursor(tag);
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 2000);
+}
+
+triggerBtn.addEventListener("click", () => {
+  const isOpen = panel.classList.toggle("open");
+  triggerBtn.classList.toggle("active", isOpen);
+  if (isOpen) searchInput.focus();
+});
+
+document.addEventListener("click", e => {
+  if (!panel.contains(e.target) && e.target !== triggerBtn) {
+    panel.classList.remove("open");
+    triggerBtn.classList.remove("active");
+  }
+});
+
+searchInput.addEventListener("input", () => {
+  searchQuery = searchInput.value.trim().toLowerCase();
+  renderGrid();
+});
+
+copyBtn.addEventListener("click", () => {
+  if (!selectedIcon) return;
+  const html = `<i class="${selectedIcon.cls}"></i>`;
+  navigator.clipboard.writeText(html).then(() => {
+    copyBtn.classList.add("copied");
+    copyBtn.innerHTML = `<i class="fa-solid fa-check"></i> Copied!`;
+    showToast(`Copied: ${html}`);
+    setTimeout(() => {
+      copyBtn.classList.remove("copied");
+      copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
+    }, 2000);
+  });
+});
+
+clearBtn.addEventListener("click", () => {
+  outputTextarea.value = "";
+  outputTextarea.focus();
+});
+
+buildTabs();
+renderGrid();
+</script>
+</body>
+</html>
